@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LayoutDashboard, Microscope, History, Settings, Bell, MapPin, LogIn, LogOut, Loader2, ShieldCheck } from "lucide-react";
 import DiagnosticTool from "@/src/components/DiagnosticTool";
 import HistoryView from "@/src/components/HistoryView";
@@ -8,13 +8,29 @@ import { AuthProvider, useAuth } from "@/src/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { auth, googleProvider, signInWithPopup } from "./firebase";
+import { auth, googleProvider, signInWithPopup, db, collection, query, where, onSnapshot } from "./firebase";
 import { DiagnosisRecord } from "./types";
 
 function AppContent() {
   const { user, profile, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("diagnose");
   const [selectedRecord, setSelectedRecord] = useState<DiagnosisRecord | null>(null);
+  const [totalDiagnoses, setTotalDiagnoses] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, "diagnoses"),
+      where("userId", "==", user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setTotalDiagnoses(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleLogin = async () => {
     try {
@@ -147,14 +163,14 @@ function AppContent() {
                 <CardContent className="p-6 space-y-2">
                   <p className="text-xs uppercase font-bold tracking-widest opacity-80">Synq Credit Score</p>
                   <h3 className="text-4xl font-mono font-bold">{profile?.creditScore || 500}</h3>
-                  <p className="text-sm opacity-80">Top 15% in Ashanti Region</p>
+                  <p className="text-sm opacity-80">Top 15% in {profile?.location?.split(',')[0] || "Ashanti Region"}</p>
                 </CardContent>
               </Card>
               <Card className="glass-card border-none">
                 <CardContent className="p-6 space-y-2">
                   <p className="text-xs uppercase font-bold tracking-widest text-slate-400">Total Diagnoses</p>
-                  <h3 className="text-4xl font-mono font-bold text-agri-green">12</h3>
-                  <p className="text-sm text-slate-500">3 pending verification</p>
+                  <h3 className="text-4xl font-mono font-bold text-agri-green">{totalDiagnoses}</h3>
+                  <p className="text-sm text-slate-500">Verified Synq Records</p>
                 </CardContent>
               </Card>
               <Card className="glass-card border-none">
