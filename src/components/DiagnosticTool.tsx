@@ -17,6 +17,7 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
   const [image, setImage] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AgriSynqResponse | null>(initialData || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,6 +39,7 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
   const handleDiagnose = async () => {
     if (!image && !description) return;
     setLoading(true);
+    setError(null);
     try {
       const data = await diagnoseCrop(image || undefined, description, profile?.preferredDialect || "Twi");
       setResult(data);
@@ -53,9 +55,26 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
         };
         await addDoc(collection(db, "diagnoses"), record);
       }
-    } catch (error) {
-      console.error("Diagnosis failed:", error);
-      handleFirestoreError(error, OperationType.WRITE, "diagnoses");
+    } catch (err: any) {
+      console.error("Diagnosis failed:", err);
+      let msg = "Diagnosis failed. Please try again.";
+      
+      // Check for 503
+      if (err.message && err.message.includes("503")) {
+        msg = "The AI engine is currently busy due to high demand. Please wait a few seconds and try again.";
+      } else if (err.message && err.message.includes("permission")) {
+        msg = "Security check failed. Please ensure you are logged in.";
+      }
+      
+      setError(msg);
+      // We don't call handleFirestoreError here if it's a Gemini error to avoid crashing the whole view
+      if (!err.message.includes("503")) {
+        try {
+          handleFirestoreError(err, OperationType.WRITE, "diagnoses");
+        } catch (e) {
+          // Error already logged
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -65,6 +84,7 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
     setImage(null);
     setDescription("");
     setResult(null);
+    setError(null);
     if (onClear) onClear();
   };
 
@@ -146,6 +166,26 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
                   <ShieldCheck className="text-agri-green w-5 h-5" />
                   <span className="text-xs text-agri-green font-bold uppercase tracking-wider">Verified Record</span>
                 </div>
+              )}
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-agri-clay/10 rounded-xl border border-agri-clay/20 flex items-start gap-3"
+                >
+                  <AlertTriangle className="text-agri-clay w-5 h-5 shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <p className="text-sm text-agri-clay font-medium">{error}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDiagnose}
+                      className="h-8 border-agri-clay text-agri-clay hover:bg-agri-clay/10"
+                    >
+                      Retry Diagnosis
+                    </Button>
+                  </div>
+                </motion.div>
               )}
             </div>
           </div>
