@@ -275,7 +275,11 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
                     </div>
                     <div className="ml-auto text-right">
                       <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Confidence</p>
-                      <p className="text-lg font-mono font-bold text-agri-green">{result.diagnosis.confidence_level}%</p>
+                      <p className="text-lg font-mono font-bold text-agri-green">
+                        {result.diagnosis.confidence_level <= 1 
+                          ? Math.round(result.diagnosis.confidence_level * 100) 
+                          : Math.round(result.diagnosis.confidence_level)}%
+                      </p>
                     </div>
                   </div>
 

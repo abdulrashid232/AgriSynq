@@ -15,10 +15,12 @@ DIAGNOSTIC PROTOCOL:
 1. IDENTIFY: Detect the crop and the specific stress (pest, nutrient deficiency, or disease).
 2. REMEDY: Provide a 3-step organic/low-cost solution accessible to a rural farmer.
 3. CLIMATE-SMART SCHEDULE: Provide a 7-day planting/maintenance schedule based on the current month in West Africa.
-4. COMPLIANCE RATING: Assign a "Scientific Compliance Score" (1-10) based on how critical this intervention is. (This score will be used to build the farmer's alternative credit history).`;
+4. COMPLIANCE RATING: Assign a "Scientific Compliance Score" (1-10) based on how critical this intervention is.
+5. CONFIDENCE: Provide a "confidence_level" as an integer between 0 and 100.`;
 
 export async function generateSpeech(text: string, voice: string = "Kore"): Promise<string | undefined> {
   try {
+    // Try the dedicated TTS model first
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],
@@ -26,7 +28,6 @@ export async function generateSpeech(text: string, voice: string = "Kore"): Prom
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            // 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'
             prebuiltVoiceConfig: { voiceName: voice },
           },
         },
@@ -34,8 +35,30 @@ export async function generateSpeech(text: string, voice: string = "Kore"): Prom
     });
 
     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  } catch (error) {
-    console.error("Speech generation failed:", error);
+  } catch (error: any) {
+    console.error("Speech generation failed with gemini-2.5-flash-preview-tts:", error);
+    
+    // Fallback to gemini-3-flash-preview if 403 or other error
+    if (error.message?.includes("Forbidden") || error.message?.includes("403")) {
+      try {
+        console.log("Attempting fallback to gemini-3-flash-preview for speech...");
+        const fallbackResponse = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [{ parts: [{ text: `Speak this clearly: ${text}` }] }],
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: voice },
+              },
+            },
+          },
+        });
+        return fallbackResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      } catch (fallbackError) {
+        console.error("Fallback speech generation also failed:", fallbackError);
+      }
+    }
     return undefined;
   }
 }
