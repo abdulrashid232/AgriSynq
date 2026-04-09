@@ -120,7 +120,7 @@ function AppContent() {
         <header className="sticky top-0 bg-agri-cream/80 backdrop-blur-md z-40 p-4 md:p-6 flex items-center justify-between border-b border-agri-green/5">
           <div className="flex items-center gap-2">
             <MapPin className="text-agri-clay w-4 h-4" />
-            <span className="text-sm font-medium text-slate-600">Kumasi, Ghana • Ochrosols Zone</span>
+            <span className="text-sm font-medium text-slate-600">{profile?.location || "Location not set"}</span>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="relative">

@@ -14,7 +14,7 @@ import { db, collection, addDoc, Timestamp, handleFirestoreError, OperationType 
 import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 
 export default function DiagnosticTool({ initialData, onClear }: { initialData?: DiagnosisRecord | null, onClear?: () => void }) {
-  const { user, profile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
   const [image, setImage] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,10 +55,14 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
           ...data,
           userId: user.uid,
           timestamp: Timestamp.now(),
-          imageUrl: image || undefined,
-          description: description || undefined,
+          imageUrl: image || null,
+          description: description || null,
         };
         await addDoc(collection(db, "diagnoses"), record);
+
+        // Update Credit Score
+        const newScore = (profile?.creditScore || 500) + data.credit_metadata.compliance_weight;
+        await updateProfile({ creditScore: newScore });
       }
     } catch (err: any) {
       console.error("Diagnosis failed:", err);
@@ -86,14 +90,9 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
   };
 
   const handlePlayAudio = async (text: string) => {
-    if (audioUrl) {
-      if (isPlaying) {
-        audioRef.current?.pause();
-        setIsPlaying(false);
-      } else {
-        audioRef.current?.play();
-        setIsPlaying(true);
-      }
+    if (isPlaying) {
+      // Stop current playback
+      setIsPlaying(false);
       return;
     }
 
@@ -101,9 +100,30 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
     try {
       const base64 = await generateSpeech(text);
       if (base64) {
-        const url = `data:audio/wav;base64,${base64}`;
-        setAudioUrl(url);
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        const arrayBuffer = bytes.buffer;
+        const audioBuffer = audioContext.createBuffer(1, arrayBuffer.byteLength / 2, 24000);
+        const nowBuffering = audioBuffer.getChannelData(0);
+        const dataView = new DataView(arrayBuffer);
+        
+        for (let i = 0; i < arrayBuffer.byteLength / 2; i++) {
+          nowBuffering[i] = dataView.getInt16(i * 2, true) / 32768;
+        }
+        
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        
         setIsPlaying(true);
+        source.onended = () => setIsPlaying(false);
+        source.start();
       }
     } catch (error) {
       console.error("Audio playback failed:", error);

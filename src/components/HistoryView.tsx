@@ -18,8 +18,7 @@ export default function HistoryView({ onSelect }: { onSelect: (record: Diagnosis
 
     const q = query(
       collection(db, "diagnoses"),
-      where("userId", "==", user.uid),
-      orderBy("timestamp", "desc")
+      where("userId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -27,6 +26,14 @@ export default function HistoryView({ onSelect }: { onSelect: (record: Diagnosis
         id: doc.id,
         ...doc.data()
       })) as DiagnosisRecord[];
+      
+      // Sort client-side to avoid index requirement
+      data.sort((a, b) => {
+        const timeA = a.timestamp instanceof Timestamp ? a.timestamp.toMillis() : 0;
+        const timeB = b.timestamp instanceof Timestamp ? b.timestamp.toMillis() : 0;
+        return timeB - timeA;
+      });
+
       setRecords(data);
       setLoading(false);
     }, (error) => {

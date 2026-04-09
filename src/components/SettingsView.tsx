@@ -8,6 +8,7 @@ import { Languages, MapPin, CreditCard, ShieldCheck } from "lucide-react";
 export default function SettingsView() {
   const { profile, updateProfile } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [location, setLocation] = useState(profile?.location || "");
 
   const dialects = ["Twi", "Ga", "Ewe", "Yoruba", "Hausa", "Fante"];
 
@@ -20,12 +21,51 @@ export default function SettingsView() {
     }
   };
 
+  const handleLocationSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ location });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!profile) return null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h2 className="text-2xl font-serif text-agri-green">Account Settings</h2>
       
+      <Card className="glass-card border-none">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <MapPin className="text-agri-green w-6 h-6" />
+            <div>
+              <CardTitle>Location & Farm Zone</CardTitle>
+              <CardDescription>Set your primary farming region for localized advice</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Kumasi, Ghana • Ochrosols Zone"
+              className="flex-1 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-agri-green outline-none bg-white/50"
+            />
+            <Button 
+              onClick={handleLocationSave} 
+              disabled={saving || location === profile.location}
+              className="bg-agri-green text-white"
+            >
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="glass-card border-none">
         <CardHeader>
           <div className="flex items-center gap-3">
