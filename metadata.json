@@ -1,0 +1,5 @@
+{
+  "name": "Agri-Synq Core",
+  "description": "Precision Agronomy and Risk Analysis for West African Smallholders. Bridging the extension gap with hyper-localized advice and financial inclusion scoring.",
+  "requestFramePermissions": ["camera"]
+}

@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - preferredDialect: string (required, enum)
+    //   - location: string (optional)
+    //   - creditScore: number (optional)
+    //
+    // Collection: diagnoses
+    // Document ID: {diagnosisId}
+    // Fields:
+    //   - userId: string (required)
+    //   - timestamp: timestamp (required)
+    //   - imageUrl: string (optional)
+    //   - description: string (optional)
+    //   - diagnosis: map (required)
+    //   - intervention: map (required)
+    //   - localization: map (required)
+    //   - credit_metadata: map (required)
+    //   - climate_schedule: list (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Domain Validators
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'preferredDialect']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.preferredDialect in ['Twi', 'Ga', 'Ewe', 'Yoruba', 'Hausa', 'Fante'];
+    }
+
+    function isValidDiagnosis(data) {
+      return data.keys().hasAll(['userId', 'timestamp', 'diagnosis', 'intervention', 'localization', 'credit_metadata', 'climate_schedule']) &&
+             data.userId == request.auth.uid &&
+             data.timestamp is timestamp &&
+             data.diagnosis is map &&
+             data.intervention is map &&
+             data.localization is map &&
+             data.credit_metadata is map &&
+             data.climate_schedule is list;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /diagnoses/{diagnosisId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidDiagnosis(request.resource.data);
+      allow update: if false; // Diagnoses are immutable
+      allow delete: if isDocOwner();
+    }
+  }
+}

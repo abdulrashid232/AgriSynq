@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "DiagnosisRecord": {
+      "title": "Diagnosis Record",
+      "description": "A record of a crop diagnosis performed by the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who performed the diagnosis." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the diagnosis was performed." },
+        "imageUrl": { "type": "string", "description": "URL of the uploaded image (if any)." },
+        "description": { "type": "string", "description": "User's description of the issue." },
+        "diagnosis": {
+          "type": "object",
+          "properties": {
+            "crop": { "type": "string" },
+            "issue_detected": { "type": "string" },
+            "confidence_level": { "type": "number" },
+            "severity": { "type": "string", "enum": ["Low", "Medium", "High"] }
+          }
+        },
+        "intervention": {
+          "type": "object",
+          "properties": {
+            "immediate_action": { "type": "string" },
+            "organic_remedy": { "type": "string" },
+            "prevention_plan": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "localization": {
+          "type": "object",
+          "properties": {
+            "english_summary": { "type": "string" },
+            "phonetic_dialect_script": { "type": "string" },
+            "target_dialect": { "type": "string" }
+          }
+        },
+        "credit_metadata": {
+          "type": "object",
+          "properties": {
+            "compliance_weight": { "type": "integer" },
+            "economic_impact_score": { "type": "integer" }
+          }
+        },
+        "climate_schedule": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["userId", "timestamp", "diagnosis", "intervention", "localization", "credit_metadata", "climate_schedule"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User settings and profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "preferredDialect": { "type": "string", "enum": ["Twi", "Ga", "Ewe", "Yoruba", "Hausa", "Fante"] },
+        "location": { "type": "string" },
+        "creditScore": { "type": "number" }
+      },
+      "required": ["uid", "email", "preferredDialect"]
+    }
+  },
+  "firestore": {
+    "/diagnoses/{diagnosisId}": {
+      "schema": "DiagnosisRecord",
+      "description": "Collection of all crop diagnoses."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile and settings."
+    }
+  }
+}
