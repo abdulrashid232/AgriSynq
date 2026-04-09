@@ -57,6 +57,7 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
           timestamp: Timestamp.now(),
           imageUrl: image || null,
           description: description || null,
+          location: profile?.location || null,
         };
         await addDoc(collection(db, "diagnoses"), record);
 

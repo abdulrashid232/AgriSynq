@@ -36,6 +36,7 @@ export interface DiagnosisRecord extends AgriSynqResponse {
   timestamp: any; // Firestore Timestamp
   imageUrl?: string;
   description?: string;
+  location?: string;
 }
 
 export interface UserProfile {

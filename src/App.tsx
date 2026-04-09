@@ -15,7 +15,7 @@ function AppContent() {
   const { user, profile, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("diagnose");
   const [selectedRecord, setSelectedRecord] = useState<DiagnosisRecord | null>(null);
-  const [totalDiagnoses, setTotalDiagnoses] = useState(0);
+  const [records, setRecords] = useState<DiagnosisRecord[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -26,11 +26,20 @@ function AppContent() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setTotalDiagnoses(snapshot.size);
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as DiagnosisRecord[];
+      setRecords(data);
     });
 
     return () => unsubscribe();
   }, [user]);
+
+  const regionalDiagnoses = profile?.location 
+    ? records.filter(r => r.location === profile.location)
+    : records;
+
+  const regionalCreditScore = profile?.location
+    ? regionalDiagnoses.reduce((acc, r) => acc + (r.credit_metadata?.compliance_weight || 0), 500)
+    : profile?.creditScore || 500;
 
   const handleLogin = async () => {
     try {
@@ -161,16 +170,16 @@ function AppContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card className="glass-card border-none earthy-gradient text-white">
                 <CardContent className="p-6 space-y-2">
-                  <p className="text-xs uppercase font-bold tracking-widest opacity-80">Synq Credit Score</p>
-                  <h3 className="text-4xl font-mono font-bold">{profile?.creditScore || 500}</h3>
-                  <p className="text-sm opacity-80">Top 15% in {profile?.location?.split(',')[0] || "Ashanti Region"}</p>
+                  <p className="text-xs uppercase font-bold tracking-widest opacity-80">Regional Credit Score</p>
+                  <h3 className="text-4xl font-mono font-bold">{regionalCreditScore}</h3>
+                  <p className="text-sm opacity-80">Zonal Ranking: {profile?.location?.split(',')[0] || "Global"}</p>
                 </CardContent>
               </Card>
               <Card className="glass-card border-none">
                 <CardContent className="p-6 space-y-2">
-                  <p className="text-xs uppercase font-bold tracking-widest text-slate-400">Total Diagnoses</p>
-                  <h3 className="text-4xl font-mono font-bold text-agri-green">{totalDiagnoses}</h3>
-                  <p className="text-sm text-slate-500">Verified Synq Records</p>
+                  <p className="text-xs uppercase font-bold tracking-widest text-slate-400">Regional Diagnoses</p>
+                  <h3 className="text-4xl font-mono font-bold text-agri-green">{regionalDiagnoses.length}</h3>
+                  <p className="text-sm text-slate-500">Total Global: {records.length}</p>
                 </CardContent>
               </Card>
               <Card className="glass-card border-none">
