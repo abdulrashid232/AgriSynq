@@ -1,13 +1,36 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, Timestamp, addDoc } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot, 
+  Timestamp, 
+  addDoc,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Modern way to enable persistence (resolves deprecation warning)
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+}, firebaseConfig.firestoreDatabaseId);
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 

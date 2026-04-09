@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Microscope, History, Settings, Bell, MapPin, LogIn, LogOut, Loader2, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Microscope, History, Settings, Bell, MapPin, LogIn, LogOut, Loader2, ShieldCheck, WifiOff } from "lucide-react";
 import DiagnosticTool from "@/src/components/DiagnosticTool";
 import HistoryView from "@/src/components/HistoryView";
 import SettingsView from "@/src/components/SettingsView";
@@ -16,6 +16,20 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState("diagnose");
   const [selectedRecord, setSelectedRecord] = useState<DiagnosisRecord | null>(null);
   const [records, setRecords] = useState<DiagnosisRecord[]>([]);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -148,6 +162,12 @@ function AppContent() {
             <span className="text-sm font-medium text-slate-600">{profile?.location || "Location not set"}</span>
           </div>
           <div className="flex items-center gap-4">
+            {!isOnline && (
+              <Badge variant="outline" className="bg-agri-clay/10 text-agri-clay border-agri-clay/20 flex items-center gap-1">
+                <WifiOff className="w-3 h-3" />
+                Offline Mode
+              </Badge>
+            )}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="w-5 h-5 text-slate-600" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-agri-clay rounded-full border-2 border-agri-cream" />

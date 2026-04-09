@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Camera, Upload, Send, Leaf, AlertTriangle, CheckCircle2, Loader2, Languages, X, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 import { db, collection, addDoc, Timestamp, handleFirestoreError, OperationType } from "../firebase";
-import { Volume2, VolumeX, Play, Pause } from "lucide-react";
+import { Volume2, VolumeX, Play, Pause, WifiOff } from "lucide-react";
 
 export default function DiagnosticTool({ initialData, onClear }: { initialData?: DiagnosisRecord | null, onClear?: () => void }) {
   const { user, profile, updateProfile } = useAuth();
@@ -23,8 +23,20 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
   const [audioLoading, setAudioLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // If initialData is provided, we are in "view mode"
   const isViewMode = !!initialData;
@@ -203,18 +215,26 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
                 readOnly={isViewMode}
               />
               {!isViewMode && (
-                <Button 
-                  onClick={handleDiagnose} 
-                  disabled={loading || (!image && !description)}
-                  className="w-full bg-agri-green hover:bg-agri-green/90 text-white h-12 text-lg font-medium rounded-xl"
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin mr-2" />
-                  ) : (
-                    <Send className="mr-2 w-5 h-5" />
+                <div className="space-y-4">
+                  {!isOnline && (
+                    <div className="p-3 bg-agri-clay/10 rounded-xl border border-agri-clay/20 flex items-center gap-2 text-agri-clay text-xs font-bold uppercase tracking-wider">
+                      <WifiOff className="w-4 h-4" />
+                      AI Diagnosis requires internet
+                    </div>
                   )}
-                  {loading ? "Analyzing..." : "Run Synq Diagnosis"}
-                </Button>
+                  <Button 
+                    onClick={handleDiagnose} 
+                    disabled={loading || (!image && !description) || !isOnline}
+                    className="w-full bg-agri-green hover:bg-agri-green/90 text-white h-12 text-lg font-medium rounded-xl"
+                  >
+                    {loading ? (
+                      <Loader2 className="animate-spin mr-2" />
+                    ) : (
+                      <Send className="mr-2 w-5 h-5" />
+                    )}
+                    {loading ? "Analyzing..." : "Run Synq Diagnosis"}
+                  </Button>
+                </div>
               )}
               {isViewMode && (
                 <div className="p-4 bg-agri-green/5 rounded-xl border border-agri-green/10 flex items-center gap-3">
