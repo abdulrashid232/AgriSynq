@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { diagnoseCrop } from "@/src/services/gemini";
+import { diagnoseCrop, generateSpeech } from "@/src/services/gemini";
 import { AgriSynqResponse, DiagnosisRecord } from "@/src/types";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AuthProvider";
 import { db, collection, addDoc, Timestamp, handleFirestoreError, OperationType } from "../firebase";
+import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 
 export default function DiagnosticTool({ initialData, onClear }: { initialData?: DiagnosisRecord | null, onClear?: () => void }) {
   const { user, profile } = useAuth();
@@ -19,6 +20,10 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AgriSynqResponse | null>(initialData || null);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // If initialData is provided, we are in "view mode"
@@ -80,11 +85,40 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
     }
   };
 
+  const handlePlayAudio = async (text: string) => {
+    if (audioUrl) {
+      if (isPlaying) {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current?.play();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
+    setAudioLoading(true);
+    try {
+      const base64 = await generateSpeech(text);
+      if (base64) {
+        const url = `data:audio/wav;base64,${base64}`;
+        setAudioUrl(url);
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error("Audio playback failed:", error);
+    } finally {
+      setAudioLoading(false);
+    }
+  };
+
   const clear = () => {
     setImage(null);
     setDescription("");
     setResult(null);
     setError(null);
+    setAudioUrl(null);
+    setIsPlaying(false);
     if (onClear) onClear();
   };
 
@@ -269,9 +303,27 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
                     </TabsContent>
                     <TabsContent value="local" className="mt-4 space-y-4">
                       <div className="p-4 bg-agri-gold/5 border border-agri-gold/20 rounded-xl space-y-3">
-                        <div className="flex items-center gap-2 text-agri-gold">
-                          <Languages className="w-5 h-5" />
-                          <span className="font-bold uppercase text-xs tracking-widest">{result.localization.target_dialect} Voice Script</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-agri-gold">
+                            <Languages className="w-5 h-5" />
+                            <span className="font-bold uppercase text-xs tracking-widest">{result.localization.target_dialect} Voice Script</span>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="border-agri-gold text-agri-gold hover:bg-agri-gold/10 h-8"
+                            onClick={() => handlePlayAudio(result.localization.phonetic_dialect_script)}
+                            disabled={audioLoading}
+                          >
+                            {audioLoading ? (
+                              <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                            ) : isPlaying ? (
+                              <VolumeX className="w-3 h-3 mr-2" />
+                            ) : (
+                              <Volume2 className="w-3 h-3 mr-2" />
+                            )}
+                            {isPlaying ? "Stop" : "Play Voice Note"}
+                          </Button>
                         </div>
                         <p className="text-lg font-serif italic text-slate-800 leading-relaxed">
                           "{result.localization.phonetic_dialect_script}"
@@ -280,6 +332,15 @@ export default function DiagnosticTool({ initialData, onClear }: { initialData?:
                           {result.localization.english_summary}
                         </p>
                       </div>
+                      {audioUrl && (
+                        <audio 
+                          ref={audioRef} 
+                          src={audioUrl} 
+                          onEnded={() => setIsPlaying(false)} 
+                          className="hidden" 
+                          autoPlay 
+                        />
+                      )}
                     </TabsContent>
                   </Tabs>
                 </CardContent>

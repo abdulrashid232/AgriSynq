@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { AgriSynqResponse } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
@@ -16,6 +16,29 @@ DIAGNOSTIC PROTOCOL:
 2. REMEDY: Provide a 3-step organic/low-cost solution accessible to a rural farmer.
 3. CLIMATE-SMART SCHEDULE: Provide a 7-day planting/maintenance schedule based on the current month in West Africa.
 4. COMPLIANCE RATING: Assign a "Scientific Compliance Score" (1-10) based on how critical this intervention is. (This score will be used to build the farmer's alternative credit history).`;
+
+export async function generateSpeech(text: string, voice: string = "Kore"): Promise<string | undefined> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            // 'Puck', 'Charon', 'Kore', 'Fenrir', 'Zephyr'
+            prebuiltVoiceConfig: { voiceName: voice },
+          },
+        },
+      },
+    });
+
+    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  } catch (error) {
+    console.error("Speech generation failed:", error);
+    return undefined;
+  }
+}
 
 export async function diagnoseCrop(
   image?: string,
